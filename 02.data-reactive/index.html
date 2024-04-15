@@ -5,6 +5,120 @@
   <title>Title</title>
 </head>
 <body>
+<script>
 
+  /**
+   * 循环遍历数据对象的每个属性
+   */
+  function observable(obj) {
+    if (!obj || typeof obj !== 'object') {
+      return 'object'
+    }
+    for (const objKey in obj) {
+      defineReactive(obj, objKey, obj[objKey])
+    }
+  }
+
+  /**
+   * 将对象的属性用 Object.defineProperty() 进行设置
+   */
+  function defineReactive(obj, objKey, val) {
+    const dep = new Dep()
+    Object.defineProperty(obj, objKey, {
+      get() {
+        console.log('get', val)
+        if (Dep.target) {
+          dep.addSub(Dep.target)
+        }
+        return val
+      },
+      set(newVal) {
+        console.log('set了', newVal)
+        val = newVal
+        dep.notify()
+      }
+    })
+  }
+
+</script>
+
+<script>
+
+  function Dep() {
+    this.subs = []
+  }
+
+  Dep.prototype = {
+    addSub: function (sub) {
+      console.log('add sub了', sub)
+      this.subs.push(sub)
+    },
+    notify: function () {
+      console.log('notify')
+      this.subs.forEach(function (sub) {
+        sub.update()
+      })
+    }
+  }
+
+  Dep.target = null
+
+</script>
+
+<script>
+  /**
+   **vm：**一个 Vue 的实例对象；
+   **exp：**是 node 节点的 v-model 等指令的属性值 或者插值符号中的属性。如 v-model="name"，exp 就是name;
+   **cb：**是 Watcher 绑定的更新函数;
+   */
+  function Watcher(vm, exp, cb) {
+    this.vm = vm
+    this.exp = exp
+    this.cb = cb
+    this.value = this.get() // 将自己添加到订阅器的操作
+  }
+
+  Watcher.prototype = {
+    update: function() {
+      this.run()
+    },
+    run: function () {
+      const value = this.vm.data[this.exp] // 新值
+      const oldVal = this.value // 旧值
+      if (value !== oldVal) {
+        this.value = value
+        this.cb.call(this.vm, value, oldVal)
+      }
+    },
+    get: function () {
+      Dep.target = this // 全局变量 订阅者 赋值
+      const value = this.vm.data[this.exp] // 强制执行监听器里的get函数
+      Dep.target = null // 全局变量 订阅者 释放
+      return value
+    }
+  }
+</script>
+<pre>
+数据双向绑定
+
+1. 实现一个监听器 Observer，用来劫持并监听所有属性，如果属性发生变化，就通知订阅者；
+2. 实现一个订阅器 Dep，用来收集订阅者，对Observer和Watcher进行统一管理；
+3. 实现一个订阅者 Watcher，可以收到属性的变化通知并执行相应的方法，从而更新视图；
+4. 实现一个解析器 Compile，可以解析每个节点的相关指令，对模版数据和订阅器进行初始化。
+</pre>
+
+
+<script>
+
+  const user = {
+    name: 'wz',
+    age: 18
+  }
+
+  observable(user)
+
+  user.name = 'sss'
+  console.log(user.age)
+</script>
 </body>
 </html>
